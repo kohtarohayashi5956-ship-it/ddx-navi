@@ -1,0 +1,161 @@
+# phase5b2_contextual_raw_display_summary.txt
+## 主訴別DDxナビ Phase 5b2：入口所見＋条件付き深掘り表示（実装）
+
+対象バージョン: ddx-7.2-phase5b-raw-level-separation → ddx-7.2b-phase5b2-contextual-raw
+
+---
+
+## 1. 変更概要
+
+- **初期表示の入口所見数**：44件（目安30〜50件の範囲内）。
+- **関連する追加所見の仕組み**：入口所見44件のうち11件（下痢・嘔吐・呼吸困難・排尿困難・発作・皮膚のかゆみ・腫瘤・中毒/誤食・発熱・黄疸・元気消失/食欲不振）に、選択時に表示される「関連する追加所見（CONTEXTUAL_RAW_MAP）」を定義した。
+  対応する追加所見グループはDOM上に常時出力し（テストからの参照切れを防ぐため）、選択されている入口所見に応じてCSSの表示/非表示のみをJSで切り替える方式にした。チェックボックス自体は破棄されないため、入口所見を外しても追加所見側のチェック状態は保持される（CR5B2-7で確認）。
+- **検査所見/詳細所見の扱い**：Phase 5bで実装したLevel2（検査所見：CBC・生化学・電解質・尿検査・画像）／Level3（詳細・専門所見：体液細胞診・特殊検査・凝固・感染症分子検査＋拡張所見）の折りたたみ構造はそのまま維持。入口所見・関連追加所見として既に表示したIDは、検査所見/詳細所見側では重複させないよう除外している。
+  なお、症状・病歴473件中、入口所見（44件）にも関連追加所見（89件）にも含まれない残り所見（106件）は、UIのセクション数を4つ（まず選ぶ／関連する追加所見／検査所見／詳細・専門所見）に保つため、「詳細・専門所見」内に「症状・病歴・その他の所見」サブグループとして格納した（実装上の判断。詳細は6.保留・次工程を参照）。
+- **Raw/card/DP/診断ロジック変更の有無**：**なし**。RAW_FINDINGS・FINDINGS・DATA（疾患カード252件）・DERIVED_PROBLEMS（143件）・trigger・candidate role・treatment detail・drug doseはすべて無変更。変更点はRaw所見ピッカーの表示順・表示階層（JS/CSSのみ）に限定される。
+
+---
+
+## 2. ENTRY_RAW_IDS一覧（44件）
+
+FINDINGS f01〜f31（31件）をすべて採用し、対応するFINDINGSコードが存在しない救急危険所見・主訴のみ既存RAW_FINDINGSから13件を追加した。
+
+| ID | label | 採用理由 |
+|---|---|---|
+| f01 | 発熱 | FINDINGS基本症状コード |
+| f02 | 黄疸 | FINDINGS基本症状コード |
+| f03 | 体重減少・削痩 | FINDINGS基本症状コード |
+| f04 | 多飲多尿 | FINDINGS基本症状コード |
+| f05 | 嘔吐（随伴） | FINDINGS基本症状コード |
+| f06 | 下痢（随伴） | FINDINGS基本症状コード |
+| f07 | 貧血 | FINDINGS基本症状コード |
+| f08 | 血尿 | FINDINGS基本症状コード |
+| f09 | 跛行・関節痛 | FINDINGS基本症状コード |
+| f10 | 脱水 | FINDINGS基本症状コード |
+| f11 | 元気消失・食欲不振 | FINDINGS基本症状コード |
+| f12 | 腹痛 | FINDINGS基本症状コード |
+| f13 | 呼吸困難・努力呼吸 | FINDINGS基本症状コード |
+| f14 | 発作・痙攣 | FINDINGS基本症状コード |
+| f15 | 振戦 | FINDINGS基本症状コード |
+| f16 | 運動不耐 | FINDINGS基本症状コード |
+| f17 | 咳 | FINDINGS基本症状コード |
+| f18 | 掻痒 | FINDINGS基本症状コード（例示の「皮膚のかゆみ」に相当） |
+| f19 | 腹水・胸水 | FINDINGS基本症状コード |
+| f20 | メレナ・吐血 | FINDINGS基本症状コード |
+| f21 | 頻脈 | FINDINGS基本症状コード |
+| f22 | チアノーゼ | FINDINGS基本症状コード |
+| f23 | 浮腫 | FINDINGS基本症状コード |
+| f24 | 腫瘤・リンパ節腫大 | FINDINGS基本症状コード（例示の「腫瘤」に相当） |
+| f25 | 出血傾向 | FINDINGS基本症状コード（例示の「出血」に相当） |
+| f26 | 眼振・斜頸 | FINDINGS基本症状コード |
+| f27 | 流涎 | FINDINGS基本症状コード |
+| f28 | 嗜眠・沈うつ | FINDINGS基本症状コード |
+| f29 | 削痩を伴う多食 | FINDINGS基本症状コード |
+| f30 | 感染巣・全身性炎症 | FINDINGS基本症状コード |
+| f31 | 低体温 | FINDINGS基本症状コード |
+| ua_stranguria | しぶり／排尿困難 | 例示の「排尿困難」に対応するFINDINGSコードが無いため追加 |
+| pe_red_eye | 眼の充血 | 例示の「眼が赤い」に対応 |
+| pe_ocular_pain | 眼痛 | 例示の「眼が痛い」に対応 |
+| hx_acute_blindness | 急性の失明 | 例示の「急性失明」に対応 |
+| pe_nasal_discharge | 鼻汁（性状不特定） | 例示の「鼻汁」に対応 |
+| pe_vaginal_discharge | 膣分泌物（性状不特定） | 例示の「膣分泌物」に対応 |
+| pe_mammary_swelling | 乳腺腫脹 | 例示の「乳腺腫脹」に対応 |
+| pe_trauma_history | 外傷歴（一般） | 例示の「外傷」に対応 |
+| hx_toxin_exposure_known | 中毒物質への曝露歴（詳細不明含む） | 例示の「誤食/中毒疑い」に対応。CONTEXTUAL_RAW_MAPのキーにも使用 |
+| pe_collapse_shock | 虚脱・ショック様症状 | 例示の「虚脱」に対応 |
+| pe_pale_mucous_membrane | 粘膜蒼白 | 例示の「粘膜蒼白」に対応 |
+| pe_non_weight_bearing_lameness | 非負重性跛行（患肢を挙げる） | 例示の「非負重性跛行」に対応 |
+| ua_oliguria_anuria | 乏尿／無尿 | 例示の「乏尿/無尿」に対応 |
+
+**採用できなかった例示項目**：「腹囲膨満」「ふらつき」は、既存RAW_FINDINGS内に対応する汎用的なIDが存在しない（腹囲膨満はpe_potbelly＝クッシング様所見／pe_abdominal_distension_pregnancy＝妊娠疑いのみで、いずれも文脈限定的。ふらつき／運動失調に対応する専用Raw所見IDは存在せず、pe_head_tiltや眼振等の個別所見のみ）。新規IDの作成は禁止されているため、入口所見には含めず、次工程での検討事項として保留した（6.参照）。
+
+---
+
+## 3. CONTEXTUAL_RAW_MAP一覧（11入口所見・89件）
+
+同一IDが複数の入口所見に関連しうる場合は、オブジェクトの記載順で最初に出現した入口所見側にのみ割り当て、表示上の重複を避けている（実装：`renderRawGroups`内の`usedIds`集合による排他制御）。
+
+### f01（発熱）→ 6件
+| ID | label | 表示理由 |
+|---|---|---|
+| cbc_neutrophilia | 好中球増多 | 炎症の裏付け |
+| pe_ln_enlargement | リンパ節腫大（単一） | 発熱の原因検索 |
+| hx_intact_female | 未避妊雌 | 子宮蓄膿症のリスク層別化 |
+| us_uterine_fluid | 子宮腔内液体貯留／子宮拡大 | 子宮蓄膿症の画像所見 |
+| poc_lactate_high | 乳酸上昇 | 敗血症の重症度評価 |
+| pe_hyperthermia | 高体温（発熱以外の要因） | 発熱との鑑別 |
+
+### f02（黄疸）→ 4件
+chem_alt_high（ALT上昇）、chem_alp_high（ALP上昇）、chem_bile_acid_high（胆汁酸高値）、chem_bilirubin_high（総ビリルビン上昇）— いずれも黄疸の原因検索で用いる基本的な肝胆道系検査所見。
+
+### f05（嘔吐）→ 10件
+hx_repeated_vomiting（反復する嘔吐）、hx_foreign_body_ingestion（異物誤食の目撃・既往歴）、pe_abdominal_pain（腹痛）、rad_si_dilation（小腸拡張＝腸管拡張）、spec_cpl_fpl_high（Spec cPL/fPL上昇＝膵炎マーカー）、chem_bun_high／chem_crea_high（高窒素血症）、chem_glucose_high（高血糖）、ua_ketonuria（ケトン尿）、abg_met_acidosis（代謝性アシドーシス）— 例示の「反復嘔吐、異物誤食歴、腹痛、腸管拡張、膵炎マーカー上昇、高窒素血症、高血糖、ケトン尿、代謝性アシドーシス」に対応。「急性嘔吐」「慢性嘔吐」「血様嘔吐」「黄疸」「食欲不振持続」は専用ID未存在または他グループ（f02/f11）で採用済みのため対象外。
+
+### f06（下痢）→ 6件
+pe_tenesmus（しぶり（排便/排尿努力））、hx_weightloss（体重減少）、chem_alb_low（低アルブミン血症）、us_gi_wall_thick（消化管壁肥厚）、hx_multi_animal_household（多頭飼育歴）、spec_cobalamin_low（低コバラミン血症）— 例示の「しぶり/渋り、体重減少、低Alb、腸管壁肥厚、多頭飼育、低コバラミン」に対応。「血便」「黒色便」「粘液便」「慢性下痢」「急性下痢」に対応する専用IDは存在しないため対象外（6.参照）。
+
+### f11（元気消失・食欲不振）→ 2件
+pe_dehydration（脱水）、hx_anorexia_persistent（3日以上の食欲不振・摂食低下）。
+
+### f13（呼吸困難）→ 9件
+pe_muffled_lung_sound（肺音・心音の減弱）、rad_pleural_effusion（胸水を示唆するX線所見）、fluid_thoracic_effusion（胸水貯留を確認）、rad_pneumothorax（気胸を示唆するX線所見）、rad_alveolar（肺胞パターン）、rad_cardiomegaly（心陰影拡大／左房拡大）、echo_la_enlargement（左房拡大）、pe_wheeze（喘鳴）、pe_stridor（吸気性喘鳴）— 例示の「チアノーゼ、肺音減弱、胸水、気胸、肺胞パターン、左房拡大、喘鳴」に対応。「チアノーゼ」「咳」は既に入口所見（f22／f17）で表示済みのため重複回避。「心雑音」「開口呼吸」に対応する専用IDは存在しないため対象外。
+
+### f14（発作）→ 8件
+pe_mentation_altered（意識レベルの変化）、pe_neuro_deficit_lateralizing（片側性の神経学的欠損）、chem_glucose_low（低血糖）、elec_ca_low（低カルシウム血症）、chem_ammonia_high（アンモニア高値）、chem_bun_low（BUN低値＝PSS/肝性脳症の補助所見）、hx_status_epilepticus（発作重積）、hx_cluster_seizures（群発発作）— 例示の「意識変化、神経学的欠損、低血糖、低Ca、高アンモニア、肝性脳症/PSS疑い、発作重積」に対応。「初発高齢」に対応する年齢系Raw所見は存在せず、「中毒曝露」はhx_toxin_exposure_known（入口所見として既に表示）のため対象外。
+
+### f18（掻痒＝皮膚のかゆみ）→ 10件
+pe_ear_pruritus（耳の痒み）、pe_paw_licking（肢端の舐め壊し）、pe_flea_dirt（ノミ糞の確認）、pe_lumbosacral_pruritus（腰背部・尾根部の掻痒）、cyto_skin_cocci（皮膚細胞診：球菌＝膿皮症）、cyto_skin_yeast（皮膚細胞診：酵母＝マラセチア）、pe_circular_alopecia（円形の脱毛斑）、pe_scaling（フケ・落屑）、wood_lamp_positive（ウッド灯陽性）、trichogram_fungal_elements（毛検査で真菌要素を確認）— 皮膚糸状菌症リスクの2項目を含む。「多頭飼育」はf06側で採用済みのため対象外。
+
+### f24（腫瘤）→ 11件
+pe_cutaneous_mass（皮膚腫瘤）、pe_mass_rapid_growth（急速な増大）、pe_mass_ulcerated（潰瘍化・自壊）、pe_multicentric_ln_enlargement（多中心性リンパ節腫大）、elec_ica_high／elec_tca_high（高Ca）、pe_anal_sac_mass（肛門嚢腫瘤）、pe_mammary_mass（乳腺腫瘤）、cyto_mast_cells（肥満細胞細胞診）、cyto_round_cell_neoplasia（円形細胞腫瘍）、rad_abdominal_mass（腹腔内マスエフェクト）。単一リンパ節腫大（pe_ln_enlargement）はf01側で採用済みのため多中心性の所見で代替。
+
+### ua_stranguria（排尿困難）→ 11件
+pe_large_bladder（膀胱拡張）、elec_k_high（高K）、ecg_bradycardia_hyperkalemia（高Kを疑う徐脈／心電図異常）、ua_pollakiuria（頻尿）、ua_crystal_struvite／ua_crystal_caox（結晶尿）、us_bladder_urolith／rad_urolith（尿石）、us_renal_pelvis_dilation／us_ureter_dilation（腎盂/尿管拡張）、fluid_creatinine_high（体腔液Creが血清より高い＝腹水Cre高値）。「血尿」「乏尿/無尿」は入口所見（f08／ua_oliguria_anuria）で既に表示済みのため対象外。「排尿痛」に対応する専用IDは存在しない。
+
+### hx_toxin_exposure_known（中毒/誤食）→ 12件
+hx_nsaid_ingestion、hx_grape_raisin_ingestion、hx_ethylene_glycol_ingestion、hx_acetaminophen_ingestion、hx_allium_ingestion、hx_chocolate_caffeine_ingestion、hx_xylitol_ingestion、hx_rodenticide_exposure、hx_organophosphate_exposure（有機リン/カーバメート曝露）、ua_crystalluria_oxalate（CaOx結晶）、cbc_methemoglobin（メトヘモグロビン）、cbc_heinz_bodies（Heinz小体）。「低血糖」はf14側、「AKI（Cre上昇）」はf05側で既に採用済みのため重複回避（いずれも中毒の随伴所見として別経路から到達可能）。
+
+---
+
+## 4. 主な動作例
+
+- **下痢を選択した場合**：f06をチェック→「関連する追加所見」に、しぶり（排便/排尿努力）・体重減少・低アルブミン血症・消化管壁肥厚・多頭飼育歴・低コバラミン血症の6件が出現する。
+- **嘔吐を選択した場合**：f05をチェック→反復する嘔吐・異物誤食の目撃・既往歴・腹痛（触診）・小腸拡張・Spec cPL/fPL上昇・BUN上昇・Cre上昇・高血糖・ケトン尿・代謝性アシドーシスの10件が出現する。
+- **排尿困難を選択した場合**：「しぶり／排尿困難」をチェック→膀胱拡張（触診）・高カリウム血症・高Kを疑う徐脈／心電図異常・頻尿・結晶尿2種・尿石関連2種・腎盂/尿管拡張・体腔液Cre高値の11件が出現する。
+- **呼吸困難を選択した場合**：f13をチェック→肺音・心音の減弱・胸水関連2種・気胸・肺胞パターン・心陰影拡大／左房拡大・左房拡大（心エコー）・喘鳴・吸気性喘鳴の9件が出現する。
+- **発作を選択した場合**：f14をチェック→意識レベルの変化・片側性の神経学的欠損・低血糖・低カルシウム血症・アンモニア高値・BUN低値・発作重積・群発発作の8件が出現する。
+- **皮膚のかゆみを選択した場合**：f18（掻痒）をチェック→耳の痒み・肢端の舐め壊し・ノミ糞の確認・腰背部掻痒・皮膚細胞診（球菌/酵母）・円形脱毛斑・フケ落屑・ウッド灯陽性・毛検査の真菌要素の10件が出現する。
+- **腫瘤を選択した場合**：f24をチェック→皮膚腫瘤・急速な増大・潰瘍化・多中心性リンパ節腫大・高Ca2種・肛門嚢腫瘤・乳腺腫瘤・肥満細胞/円形細胞細胞診・腹腔内マスエフェクトの11件が出現する。
+- **中毒/誤食を選択した場合**：「中毒物質への曝露歴」をチェック→NSAIDs・ブドウ/レーズン・エチレングリコール・アセトアミノフェン・ネギ類・チョコ/カフェイン・キシリトール・殺鼠剤・有機リン/カーバメートの各曝露歴と、CaOx結晶・メトヘモグロビン・Heinz小体の12件が出現する。
+
+複数の入口所見を同時に選択した場合、対応する各グループが同時に表示され、いずれかのグループで既に採用済みのIDは他グループ側では最初から重複配置していないため、統合表示時にも重複は生じない。
+
+---
+
+## 5. テスト結果
+
+- pl-chip総数：**504件**（変更前と同数、増減なし）
+- data-fidユニーク数：**504件**（重複・参照切れなし）
+- 初期表示入口所見数：**44件**（目安30〜50件の範囲内）
+- 既存テスト：**393件 PASS / 0 FAIL**（Phase 5b以前からのCASES群、全件維持）
+- 新規CONTEXTUAL_RAW_UI_5B2_CASES：**14件 PASS / 0 FAIL**
+  （CR5B2-1a〜1e：初期表示の絞り込み確認5件、CR5B2-2〜5：下痢/嘔吐/排尿困難/中毒誤食の深掘り表示確認4件、CR5B2-B1〜B4：呼吸困難/発作/皮膚のかゆみ/腫瘤の深掘り表示確認4件、CR5B2-7：チェック状態保持確認1件）
+- UI遷移テスト：**PASS**（疾患カードを開くとパネルが閉じてカードへ移動する挙動を維持）
+- **総合**：407 PASS / 0 FAIL / 総計408（393＋14＋UI遷移1）
+
+---
+
+## 6. 保留・次工程
+
+- **Phase 5cへ進める状態か**：進めると判断する。今回の変更はRaw所見ピッカーのUI表示のみであり、DATA・疾患カード・RAW_FINDINGS・FINDINGS・DERIVED_PROBLEMS・診断ロジック（trigger/candidate role）・治療欄（treatment detail/drug dose）はすべて無変更、既存394件＋新規14件のテストが全てPASSしている。
+- **追加で調整すべき入口所見**：
+  - 「腹囲膨満」「ふらつき」に相当する汎用的なRaw所見IDが現状存在しない。次工程（Phase 5c以降のRaw所見拡充検討時）で、新規ID追加の是非を検討する余地がある（本フェーズでは新規ID作成が禁止されているため未対応）。
+  - 「初発高齢」（発作の文脈）、「排尿痛」（排尿困難の文脈）、「心雑音」「開口呼吸」（呼吸困難の文脈）、「血便」「黒色便」「粘液便」「慢性下痢」（下痢の文脈）も同様に対応する専用IDが存在せず、今回は対象外とした。
+- **実運用で見直すべき深掘りマッピング**：
+  - 現在CONTEXTUAL_RAW_MAPは11の入口所見のみに定義されている（残り33の入口所見には深掘りマッピング未定義）。実運用のフィードバックを踏まえ、跛行（f09）・咳（f17）・多飲多尿（f04）等、他の主要な入口所見にも深掘りマッピングを拡充する余地がある。
+  - 症状・病歴のうち入口所見・関連追加所見に含まれない残り106件は「詳細・専門所見」内の「症状・病歴・その他の所見」サブグループに格納した。これは症状・病歴という性質上、本来は検査所見/専門所見とは異なる分類であり、Phase 5cで主訴別優先表示を実装する際に、より自然な配置（主訴ごとのリストなど）へ再整理することが望ましい。
+  - 複数の入口所見に共通して関連しうる所見（例：hx_multi_animal_household＝下痢と皮膚掻痒の両方に関連）は、現在は最初に定義したグループにのみ表示される。将来的には1つのRaw所見IDが複数の入口所見グループに（重複なく）現れるようなUI設計（例：バッジ表示や複数グループからの参照）を検討する余地がある。
+
+---
+
+（本ファイルはPhase 5b2の実装記録。次工程はPhase 5c：主訴別優先表示に進んで問題ない）

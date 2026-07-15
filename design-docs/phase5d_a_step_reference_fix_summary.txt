@@ -1,0 +1,122 @@
+# phase5d_a_step_reference_fix_summary.txt
+## 主訴別DDxナビ Phase 5d-a：Step3/Step4の検査所見参照表示の補強（実装）
+
+対象バージョン: ddx-7.4-phase5d-stepwise-finding-display → ddx-7.4a-phase5d-step-reference-fix
+
+---
+
+## 1. 変更概要
+
+- Step3（検査後に選ぶ）の本体先頭に「代表的な検査所見」参照リスト（26件）を追加した。
+- Step4（詳細・専門所見）の本体先頭に「代表的な詳細・専門所見」参照リスト（15件）を追加した。
+- いずれも**新規のpl-chipは作成していない**。参照リストの各項目はPhase 5c「主訴別動的タブ」・Phase 5b3「所見カテゴリタブ」と同じ「既存チェックボックスを操作する参照ボタン（`.search-result-item`）」方式で実装した。ボタンをクリックすると、既存の`.pl-chip`のチェックボックスを直接操作し、`change`イベントを発火させて通常の選択フローに乗せる。
+- **Raw/card/DP/診断ロジック変更の有無**：**なし**。DATA・疾患カード252件・RAW_FINDINGS473件・FINDINGS31件・DERIVED_PROBLEMS143件・trigger・candidate role・treatment detail・drug dose・COMPLAINT_RAW_MAPはすべて無変更。変更は「Step3/Step4内の参照表示の追加」のみに限定した。
+
+---
+
+## 2. Step3代表検査所見（26件）
+
+| ID | label | 実在確認 |
+|---|---|---|
+| cbc_neutrophilia | 好中球増多 | OK |
+| cbc_left_shift | 桿状核好中球増加／左方移動 | OK |
+| cbc_hct_low | HCT/PCV低下（貧血） | OK |
+| cbc_platelet_low | 血小板減少 | OK |
+| chem_bun_high | BUN上昇 | OK |
+| chem_crea_high | Cre上昇 | OK |
+| chem_bilirubin_high | 総ビリルビン上昇 | OK |
+| chem_alt_high | ALT上昇（肝細胞障害パターン） | OK |
+| chem_alp_high | ALP上昇（胆汁うっ滞／酵素誘導パターン） | OK |
+| chem_alb_low | 低アルブミン血症 | OK（依頼IDの`chem_albumin_low`は実在せず、正しいID`chem_alb_low`に置き換えた） |
+| chem_glucose_high | 高血糖 | OK |
+| chem_glucose_low | 低血糖 | OK |
+| elec_k_high | 高カリウム血症 | OK |
+| elec_na_low | 低ナトリウム血症 | OK |
+| elec_ca_low | 低カルシウム血症（総Ca/イオン化Ca） | OK |
+| ua_usg_low | 尿比重低下 | OK |
+| ua_pyuria | 膿尿 | OK |
+| ua_bacteriuria | 細菌尿 | OK |
+| rad_alveolar | 肺胞パターン | OK |
+| rad_pneumothorax | 気胸を示唆する胸部X線所見 | OK |
+| us_abd_effusion | 腹水 | OK |
+| us_gi_wall_thick | 消化管壁肥厚 | OK |
+| us_bileduct_dilation | 胆管拡張 | OK |
+| us_renal_pelvis_dilation | 腎盂拡張 | OK |
+| us_ureter_dilation | 尿管拡張 | OK |
+| echo_la_enlargement | 左房拡大 | OK |
+
+**クリック時の挙動**：クリックすると対応する`.pl-chip`の`<input>`チェックボックスを`checked=true`にし、`change`イベント（bubbles:true）を発火する。これにより既存の`renderAll()`が起動し、「選択中の所見」への反映、`.search-result-item`の「選択済み」バッジ表示、派生プロブレム・候補疾患の再計算が通常の選択操作と同様に行われる。すでに選択済みの項目は「選択済み」バッジが表示される（クリックしても状態は変わらない＝二重登録は発生しない）。
+
+---
+
+## 3. Step4代表詳細・専門所見（15件）
+
+| ID | label | 実在確認 |
+|---|---|---|
+| fluid_intracellular_bacteria | 変性好中球内／背景に細菌を認める（細胞内細菌） | OK |
+| fluid_glucose_gap | 血液より体腔液グルコースが低い | OK（依頼IDの`fluid_glucose_low_vs_blood`は実在せず、正しいID`fluid_glucose_gap`に置き換えた） |
+| fluid_lactate_gap | 体腔液乳酸が血液より高い | OK（依頼IDの`fluid_lactate_high_vs_blood`は実在せず、正しいID`fluid_lactate_gap`に置き換えた） |
+| fluid_creatinine_high | 体腔液Creが血清より高い | OK |
+| fluid_bilirubin_high | 体腔液Bilが血清より高い | OK |
+| cyto_round_cell_neoplasia | 円形細胞腫瘍を疑う単調な細胞増殖 | OK |
+| cyto_mast_cells | 肥満細胞を認める | OK |
+| cyto_epithelial_neoplasia | 上皮系悪性腫瘍を疑う細胞異型 | OK（依頼IDの`cyto_epithelial_malignancy`は実在せず、正しいID`cyto_epithelial_neoplasia`に置き換えた） |
+| coag_pt_long | PT延長 | OK |
+| coag_aptt_long | aPTT延長 | OK |
+| coag_ddimer_high | Dダイマー上昇 | OK |
+| coag_fibrinogen_low | フィブリノゲン低下 | OK |
+| spec_t4_high | 総T4上昇 | OK |
+| inf_felv_positive | FeLV抗原陽性 | OK（依頼IDの`spec_fiv_felv_positive`は実在せず、正しいID`inf_felv_positive`／`inf_fiv_positive`の2件に分割した） |
+| inf_fiv_positive | FIV抗体陽性 | OK（同上） |
+
+**採用できなかった依頼項目**：`spec_fip_suspicious`（FIP関連検査疑い）に対応する既存Raw所見IDは、RAW_FINDINGSの「感染症・分子検査」カテゴリ（8件：FeLV／FIV／パルボ／Giardia／ベクター媒介／レプトスピラ／ヘモプラズマ／培養陽性）を確認した限り存在しなかったため、新規ID作成禁止の方針に従い採用していない。
+
+**クリック時の挙動**：Step3と同様。既存チェックボックスの操作、「選択中の所見」への即時反映、派生プロブレム・候補疾患の再計算、選択済みバッジ表示。
+
+---
+
+## 4. 件数整合性
+
+- pl-chip総数：**504件**（Phase 5dから変化なし）
+- data-fidユニーク数：**504件**（重複・参照切れなし。参照ボタン追加によるpl-chip増加はない）
+- Step分類総数：関連する追加所見89件＋Step1（44件）＋Step2（155件）＋Step3（134件）＋Step4（82件）＝504件（変化なし）
+- 参照ボタン数：Step3代表検査所見26件＋Step4代表詳細所見15件＝**41件**（いずれも既存`.pl-chip`を参照する`.search-result-item`であり、`.pl-chip`ではない）
+- 重複／欠落の有無：**なし**。Step3/Step4参照リストの全26＋15件は、既存の`.pl-chip[data-fid="..."]`を参照しており、`document.querySelectorAll('.pl-chip')`の件数・ユニークID数はいずれも504件のまま変化していない。
+
+---
+
+## 5. 既存機能の維持
+
+- **選択中の所見**：維持。参照ボタンからの選択も即時反映され、×解除・plResetでの一括解除も従来通り機能する。
+- **直接検索**：維持。「胆管」等での検索・選択も正常動作を確認した。
+- **所見カテゴリタブ**：維持。11タブの構成・参照方式（Phase 5dで「よく使う」タブも参照方式に統一済み）は変更なし。
+- **主訴別動的タブ**：維持。嘔吐カードのボタンからの遷移・動的タブ表示・関連所見表示を確認した。
+- **関連する追加所見**：維持。CONTEXTUAL_RAW_MAPの割り当て・表示仕様は変更していない（Step3/Step4参照リストは、関連する追加所見に既にある項目も含めて「参照」するのみで、実体を移動・複製していない）。
+- **派生プロブレム・整合する候補疾患**：計算ロジック・表示ロジックともに変更なし。
+- **UI遷移**：変更なし、PASSを確認済み。
+
+---
+
+## 6. テスト結果
+
+- 既存テスト（Phase 5dまで）：**非UIテスト476件相当 PASS / 0 FAIL**（Phase 5cまでの既存構成に、Phase 5dのSTEPWISE_FINDING_DISPLAY_5D_CASES25件を含む）
+- 新規STEP_REFERENCE_5DA_CASES：**15件 PASS / 0 FAIL**
+  （SR5DA-1：Step3参照表示確認3件、SR5DA-2：Step3参照ボタンでの選択確認4件、SR5DA-3：Step4参照表示・ID実在確認4件、SR5DA-4：総数維持確認2件、SR5DA-5〜6：直接検索・主訴別動的タブの非破壊確認2件）
+- UI遷移テスト：**1 PASS / 0 FAIL**
+- **総合**：非UIテスト491件 PASS / 0 FAIL（総計491）＋UI遷移テスト1件 PASS ＝ **総PASS 492 / 総FAIL 0 / 総計492**
+
+---
+
+## 7. Phase 5eへ進める状態か
+
+**進めると判断する。** 今回の変更もRaw所見ピッカーの参照表示の追加に限定されており、DATA・疾患カード・RAW_FINDINGS・FINDINGS・DERIVED_PROBLEMS・診断ロジック・治療欄・COMPLAINT_RAW_MAPはすべて無変更、既存491件（非UI）＋UI遷移1件のテストが全てPASSしている。
+
+次に扱うべきUI課題（Phase 5e以降での検討候補）：
+
+- **参照リストの拡充**：今回はユーザー指定の26件（Step3）・15件（Step4）のみを採用した。実運用のフィードバックを踏まえ、他の頻用所見（例：Step3のBUN/Cre以外の腎機能指標、Step4のFIP関連所見の代替案検討等）の追加を検討できる。
+- **「関連する追加所見」との重複感の整理**：Step3/Step4参照リストと「関連する追加所見（ctx-group）」の両方に同じ所見（好中球増多等）が別々の場所から参照可能になっている。参照元が増えたことで探しやすさは改善したが、「同じ所見が複数の入口から選べる」ことについてのUI上の説明（ツールチップ等）を次工程で検討する余地がある。
+- **FIP関連検査の扱い**：`spec_fip_suspicious`に相当する既存Raw所見IDが存在しないことが判明した。将来的にFIP関連の体腔液検査（A:G比等）や滲出液所見を専用のRaw所見として追加するかどうかは、Raw所見データ自体の拡充（本フェーズの範囲外）として次工程で検討する余地がある。
+
+---
+
+（本ファイルはPhase 5d-aの実装記録）

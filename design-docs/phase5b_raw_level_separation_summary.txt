@@ -1,0 +1,58 @@
+# phase5b_raw_level_separation_summary.txt
+## 主訴別DDxナビ Phase 5b：Raw所見の頻用/詳細分離（実装）
+
+対象バージョン: ddx-7.1-phase5a-uiux-inventory → ddx-7.2-phase5b-raw-level-separation
+
+---
+
+## 1. 実装内容
+
+phase5a_uiux_inventory_design_extract.txt セクション3の設計方針に基づき、Raw所見473件＋FINDINGS31件（計504件）を
+UI上でLevel 1/2/3に分離した。
+
+- **判定基準**：既存の `cat`（カテゴリ）と `priority`（最優先/標準/拡張）フィールドのみを使用。
+  RAW_FINDINGS・FINDINGS・card・DERIVED_PROBLEMSのデータ構造・ID・件数は一切変更していない。
+- **Level 1（まず見る所見）**：`症状・病歴`カテゴリ全件（FINDINGS f01〜f31の31件＋hx_/pe_系208件、計239件）。
+  初期表示時から開いた状態で表示（クリック不要）。
+- **Level 2（検査後に見る所見）**：血液一般・塗抹／生化学／電解質・血液ガス・POC／尿検査／画像（X線・超音波・CT・心エコー）の
+  `priority`が最優先/標準の項目（176件）。デフォルトは折りたたみ、タップで展開。
+- **Level 3（詳細・専門所見）**：体液・細胞診／特殊検査／凝固・止血／感染症・分子検査の全件（82件）に加え、
+  Level 2側カテゴリ（血液一般・塗抹／電解質・血液ガス・POC）に含まれる`priority: "拡張"`の7件をLevel 3側へ回した
+  （計89件）。デフォルトは折りたたみ。
+- 239 + 176 + 89 = 504件で全件一致（欠落・重複なし）を確認済み。
+- 既存の「＋拡張項目を表示」トグル機構（Level 3内の体液・細胞診等カテゴリ、および凝固・止血／特殊検査の拡張2件×2）は
+  そのまま維持。今回新たに「Level 2→Level 3への拡張所見の回送」グループ（例：「血液一般・塗抹・拡張所見（5）」）を
+  Level 3内に追加した。
+- カテゴリ単位の開閉トグル（`.raw-cat-h`）、拡張トグル（`.raw-ext-toggle`）の既存イベント委譲はそのまま利用し、
+  新規に追加したLevel単位の開閉トグル（`.raw-level-toggle`）のクリックハンドラのみ追加した。
+
+## 2. 変更ファイル・変更範囲
+
+- CSS：`.raw-level` `.raw-level-top` `.raw-level-toggle` `.raw-level-body` 関連のスタイルを追加（既存クラスは変更なし）。
+- JS：`RAW_LEVELS`定義・`levelOfCat()`を追加。`renderRawGroups()`をLevel1/2/3構造に書き換え（Raw所見ピッカーの表示部分のみ）。
+  `rawGroupsEl`のクリックハンドラに`.raw-level-toggle`の分岐を1つ追加。
+- 変更していないもの：DATA（22主訴・疾患カード252件）、RAW_FINDINGS（473件）、FINDINGS（31件）、DERIVED_PROBLEMS（143件）、
+  `diag`（trigger/candidate role等の診断ロジック）、`detail.tx`（治療欄本文・薬剤用量）、guidelines等。
+
+## 3. 回帰テスト結果
+
+- 既存テストスイート（regression_test.js）を変更後のHTMLに対して実行：**393 PASS + UI遷移テスト1件PASS = 394 / 394 PASS、0 FAIL**。
+- 全てのテストは `.pl-chip[data-fid="ID"]` をdocument全体から検索する実装のため、Level構造への入れ子変更による影響はなし
+  （chipのDOM上の親子関係は問わない設計であることをテストコードで確認済み）。
+- 追加で以下を個別確認：
+  - pl-chip総数504／data-fidユニーク数504（欠落・重複なし）
+  - Level 1のカテゴリ（症状・病歴）はページ読込時から開いた状態
+  - Level 2の「血液一般・塗抹」カテゴリには拡張トグルが存在しない（Level 3側へ回送されているため）
+  - Level 3展開後に「血液一般・塗抹・拡張所見（5件）」グループが存在し、cbc_polychromasia等が含まれる
+  - Level 3固有カテゴリ（凝固・止血等）は既存の拡張トグルをそのまま保持
+
+## 4. 保留・次工程
+
+- 22主訴分の主訴別優先表示マッピング（Phase 5c）は今回対象外。
+- 検査前/検査後のStep1/2/3段階表示（Phase 5d）、治療欄UI改善（Phase 5e）、救急モード強化（Phase 5f）は未実施。
+- Level分類の閾値・グルーピング（どのカテゴリをLevel2/3に振るか）は設計メモのベースラインに従ったものであり、
+  実運用でのフィードバックにより調整余地がある。
+
+---
+
+（本ファイルはPhase 5bの実装記録。次工程はPhase 5c：主訴別優先表示に進んで問題ない）

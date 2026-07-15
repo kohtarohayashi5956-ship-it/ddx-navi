@@ -1,0 +1,96 @@
+# phase5f_emergency_mode_enhancement_summary.txt
+## 主訴別DDxナビ Phase 5f：救急モード強化・初期安定化パネル（実装）
+
+対象バージョン: ddx-7.5-phase5e-treatment-safety-ui → ddx-7.6-phase5f-emergency-mode-enhancement
+
+---
+
+## 1. 変更概要
+
+- 既存の「🚨 救急モード」トグル（`erToggle`）を拡張し、ONにすると画面上部（🚨救急モードの直下、プロブレムリスト検索ボタンより前）に「🚨 救急初期安定化」パネルを新設して表示するようにした。
+- パネル内にA/B（気道・呼吸・酸素化）、C（循環・ショック）、D（神経・発作・低血糖）、E（体温・疼痛・外傷）、U（尿閉・高K）、T（中毒・曝露）の6カードを表示。いずれも**薬剤用量を含まない**確認事項・原則のみのテキストで構成した。
+- プロブレムリスト検索パネルで選択中のRaw/FINDINGSに応じて、該当する安定化カードを枠線・背景色で強調表示し、「選択所見と一致」バッジを表示する。強調はCSSクラスの付け外しのみで、`DERIVED_PROBLEMS`・`trigger`・`candidate role`の計算には一切使用していない。
+- 既存の危険（danger）バッジ「見逃すな」を「🚨 見逃すな」に強化し、視覚的に目立つよう影付きスタイルを追加した。
+- Phase 5eの高リスク治療UI（`isHighRiskDrug`判定）を再利用し、高リスク薬剤を含むカードに「⚠️ 高リスク治療あり」のミニバッジを主訴カード一覧・候補疾患カード（`.cand-card`）の両方に追加した。
+- **Raw/card/DP/診断ロジック/治療本文変更の有無**：**なし**。DATA・DERIVED_PROBLEMSの文字列が変更前後で完全一致することを確認済み。変更は「救急モード表示・初期安定化パネル・救急カードの視認性向上」に限定した。
+
+---
+
+## 2. 救急初期安定化パネル
+
+| カード | 見出し | 表示文言 |
+|---|---|---|
+| A／B | 気道・呼吸・酸素化 | 酸素投与／ストレス最小化／開口呼吸・チアノーゼでは強制保定を避ける／胸水・気胸・上部気道閉塞を優先評価／必要なら胸腔穿刺/減圧を検討／心原性肺水腫疑いでは過剰輸液に注意 |
+| C | 循環・ショック | 粘膜色、CRT、脈圧、心拍、血圧を確認／血糖、乳酸、PCV/TP、電解質を早期確認／FAST/POCUSで胸腹水・心嚢水を確認／輸液は原因別に調整／心疾患疑いでは過剰輸液に注意 |
+| D | 神経・発作・低血糖 | 発作持続/群発なら発作停止を優先／低血糖、低Ca、高アンモニア、中毒を確認／体温上昇を確認／頭蓋内疾患、肝性脳症、中毒を並行評価／投薬量は成書・院内プロトコル確認 |
+| E | 体温・疼痛・外傷 | 体温（高体温/低体温）を確認／疼痛スコアで評価し早期の鎮痛を検討／外傷部位・出血源・骨折/開放創を確認／熱中症/低体温では積極的な体温管理を優先／鎮痛薬用量は成書・院内プロトコル確認 |
+| U | 尿閉・高K | 膀胱拡張、乏尿/無尿を確認／高K、徐脈/不整脈、ECGを早期評価／鎮静/麻酔前に循環と電解質を確認／減圧、尿道閉塞解除、尿腹症の除外を検討／高K治療用量は成書・院内プロトコル確認 |
+| T | 中毒・曝露 | 何を、いつ、どれだけ摂取したか確認／催吐/吸着/胃洗浄の適応を判断／低血糖、AKI、メトヘモグロビン、溶血、凝固異常を確認／中毒相談窓口/成書/院内プロトコル確認／解毒薬用量は高リスクとして扱う |
+
+- **薬剤用量を追加していないこと**：上記いずれのカードにも薬剤名・投与量・単位は一切含まれていない（「用量は成書・院内プロトコル確認」という誘導のみ）。
+- **成書/院内プロトコル確認表示の有無**：D・E・U・Tの4カードに「成書・院内プロトコル確認」の誘導文を明記した。A/B・Cは初期評価・確認事項のみのため誘導文は付けていない。
+
+---
+
+## 3. 所見連動の強調
+
+| 選択される主なRaw/FINDINGS | 強調される安定化カード |
+|---|---|
+| f13（呼吸困難）、f22（チアノーゼ）、pe_cyanosis、pe_dyspnea、pe_stridor、pe_orthopnea、pe_muffled_lung_sound、rad_pleural_effusion、rad_pneumothorax、fluid_thoracic_effusion、rad_alveolar、echo_la_enlargement、rad_cardiomegaly | A／B |
+| pe_collapse_shock、pe_pale_mucous_membrane、f25（出血傾向）、f07（貧血）、fluid_hemorrhagic、echo_pericardial_effusion、poc_hypotension、poc_lactate_high、us_abd_effusion、pe_cold_extremity、pe_absent_pulse | C |
+| f14（発作）、hx_status_epilepticus、hx_cluster_seizures、chem_glucose_low、elec_ca_low、chem_ammonia_high、pe_mentation_altered、pe_neuro_deficit_lateralizing | D |
+| pe_hyperthermia、f31（低体温）、pe_trauma_history、pe_non_weight_bearing_lameness、f25（出血傾向） | E |
+| ua_stranguria、ua_oliguria_anuria、pe_large_bladder、elec_k_high、ecg_bradycardia_hyperkalemia、fluid_creatinine_high | U |
+| hx_toxin_exposure_known、hx_nsaid_ingestion、hx_grape_raisin_ingestion、hx_ethylene_glycol_ingestion、hx_acetaminophen_ingestion、hx_allium_ingestion、hx_chocolate_caffeine_ingestion、hx_xylitol_ingestion、hx_rodenticide_exposure、hx_organophosphate_exposure | T |
+
+- **強調が診断ロジックに影響しないこと**：強調処理（`updateErStabilizeHighlight`）は選択中Raw IDの集合とカードの`triggers`配列を比較してCSSクラス`er-stab-hit`を付け外しするだけの表示専用処理であり、`computeDerivedProblems`・`DERIVED_PROBLEMS`・候補疾患の順位計算関数には一切渡していない（変数として参照すらしていない）。テストでも、所見選択前後で候補疾患カードの`data-role`属性が変化しないことを確認済み。
+
+---
+
+## 4. 救急候補疾患の視認性
+
+- **dangerカード表示**：既存の`d.danger`フラグを持つ主訴カードの「見逃すな」バッジを「🚨 見逃すな」に強化し、box-shadowで視覚的に目立たせた。バッジの表示条件（`d.danger`）自体は変更していない。
+- **高リスク治療UIとの連携**：Phase 5eで実装した`isHighRiskDrug()`判定をそのまま再利用し、`HIGH_RISK_CARD_IDS`（表示専用のSet）を新設。このSetに含まれるカードには「⚠️ 高リスク治療あり」のミニバッジを主訴カード一覧に追加表示する。
+- **cand-card側の表示有無**：プロブレムリストの「整合する候補疾患」（`.cand-card`）にも、`CARD_INDEX`の既存`danger`フィールドと`HIGH_RISK_CARD_IDS`を参照して同様のバッジ（`.cand-er-badge`／`.cand-hr-badge`）を追加した。
+- **順位計算を変更していないこと**：バッジ追加はcand-cardのHTML生成関数（`cardHtml`）内でのマークアップ追加のみであり、候補の並び順・`role`（primary/branch/critical_mimic/conditional）・`urgency`の計算ロジックには一切触れていない。テストでDKAカードの`role`属性が"primary"のまま変化しないことを確認済み。
+
+---
+
+## 5. 件数整合性
+
+- DATA件数：**22主訴**（変更なし）
+- 疾患カード数：**252件**（変更なし）
+- RAW_FINDINGS件数：**473件**（変更なし）
+- FINDINGS件数：**31件**（変更なし）
+- DERIVED_PROBLEMS件数：**143件**（変更なし）
+- pl-chip総数：**504件**（変更なし）
+- data-fidユニーク数：**504件**（変更なし）
+- 治療本文変更件数：**0件**（DATA定数の文字列完全一致で確認）
+- 薬剤用量変更件数：**0件**（同上）
+
+---
+
+## 6. テスト結果
+
+- 既存テスト（Phase 5eまで）：**非UIテスト521件相当 PASS / 0 FAIL**
+- 新規EMERGENCY_MODE_UI_5F_CASES：**21件 PASS / 0 FAIL**
+  （ER5F-1：救急初期安定化パネル確認4件、ER5F-2：呼吸困難でA/B強調3件、ER5F-3：虚脱でC強調2件、ER5F-4：発作でD強調2件、ER5F-5：高KでU強調2件、ER5F-6：中毒でT強調2件、ER5F-7：救急候補カード視認性4件、ER5F-8：総数・参照切れ確認2件）
+- UI遷移テスト：**1 PASS / 0 FAIL**
+- **総合**：非UIテスト542件 PASS / 0 FAIL（総計542）＋UI遷移テスト1件 PASS ＝ **総PASS 543 / 総FAIL 0 / 総計543**
+
+---
+
+## 7. Phase 5gへ進める状態か
+
+**進めると判断する。** 今回の変更は救急モード表示・初期安定化パネル・救急カードの視認性向上に限定されており、DATA・疾患カード・RAW_FINDINGS・FINDINGS・DERIVED_PROBLEMS・診断ロジック・治療本文・薬剤用量はすべて無変更（文字列完全一致で確認済み）、既存521件（非UI）＋UI遷移1件＋新規21件のテストが全てPASSしている。
+
+次に扱うべきUI課題（Phase 5g以降での検討候補）：
+
+- **初期安定化パネルのカード拡充**：現在は6カード（A/B・C・D・E・U・T）に限定している。眼科救急（急性緑内障・急性失明）や産科救急（難産・産褥テタニー）等、既存の主訴別`c.er`トリアージにはあるが本パネルには含めていない領域への拡張を検討できる。
+- **主訴カードの`c.er`（既存の主訴別緊急トリアージ）とのUI統合**：現在、Phase 5fの「救急初期安定化パネル」（全主訴共通・所見連動）と既存の`c.er`（主訴固有・救急モードON時に該当主訴カード内に表示）は並存している。両者の関係性・使い分けをUI上でより明確にする改善の余地がある。
+- **強調ルールの精緻化**：現在のtriggersはキーワード的に厳選した10〜13件/カードで判定している。実運用のフィードバックを踏まえ、誤検出・検出漏れの調整余地がある。
+- **高リスク治療バッジの一覧性**：候補疾患カード・主訴カード双方にバッジを追加したが、救急モードON時に「高リスク治療あり」のカードだけを絞り込んで見る機能（フィルタ）は未実装。次工程での検討候補。
+
+---
+
+（本ファイルはPhase 5fの実装記録）

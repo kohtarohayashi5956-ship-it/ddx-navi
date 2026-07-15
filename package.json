@@ -1,0 +1,12 @@
+{
+  "name": "ddx-navigator",
+  "version": "0.7.4",
+  "private": true,
+  "description": "主訴別DDxナビ（獣医師向け鑑別・初期対応支援ツール）Phase 7d freeze",
+  "scripts": {
+    "test": "cp field-feedback/*.md field-feedback/*.txt app/ && cp design-docs/phase6_beta_test_scenarios.md app/ && node tests/regression_test.js app/ddx-8.2-phase7c-sex-neuter-ui.html; rm app/*.md app/*.txt"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
